@@ -35,7 +35,7 @@ func newDiff() *Diff {
 	return &Diff{
 		Added:    make(map[*Path]interface{}),
 		Removed:  make(map[*Path]interface{}),
-		Modified: make(map[*Path]interface{}),
+		Modified: make(map[*Path]Vals),
 		visited:  make(map[visit]bool),
 	}
 }
@@ -51,15 +51,15 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 		return true
 	}
 	if !bVal.IsValid() {
-		d.Modified[&localPath] = nil
+		d.Modified[&localPath] = Vals{}
 		return false
 	} else if !aVal.IsValid() {
-		d.Modified[&localPath] = bVal.Interface()
+		d.Modified[&localPath] = Vals{aVal.Interface(), bVal.Interface()}
 		return false
 	}
 
 	if aVal.Type() != bVal.Type() {
-		d.Modified[&localPath] = bVal.Interface()
+		d.Modified[&localPath] = Vals{aVal.Interface(), bVal.Interface()}
 		return false
 	}
 	kind := aVal.Kind()
@@ -101,7 +101,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 			return true
 		}
 		if aVal.IsNil() || bVal.IsNil() {
-			d.Modified[&localPath] = bVal.Interface()
+			d.Modified[&localPath] = Vals{aVal.Interface(), bVal.Interface()}
 			return false
 		}
 	}
@@ -171,7 +171,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 		if reflect.DeepEqual(aVal.Interface(), bVal.Interface()) {
 			equal = true
 		} else {
-			d.Modified[&localPath] = bVal.Interface()
+			d.Modified[&localPath] = Vals{aVal.Interface(), bVal.Interface()}
 			equal = false
 		}
 	}
@@ -196,10 +196,15 @@ type visit struct {
 	typ reflect.Type
 }
 
+type Vals struct {
+	ValA, ValB interface{}
+}
+
 // Diff represents a change in a struct.
 type Diff struct {
-	Added, Removed, Modified map[*Path]interface{}
-	visited                  map[visit]bool
+	Added, Removed map[*Path]interface{}
+	Modified       map[*Path]Vals
+	visited        map[visit]bool
 }
 
 // Path represents a path to a changed datum.
